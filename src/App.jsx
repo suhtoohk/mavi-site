@@ -14,8 +14,12 @@ import {
   LogOut,
   ChevronRight,
   ShieldCheck,
-  CheckCircle2
-  ,Bot, Bookmark, ShoppingCart
+  CheckCircle2,
+  Bot,
+  Bookmark,
+  ShoppingCart,
+  Trash2,
+  Camera
 } from 'lucide-react';
 
 const PRODUCT_CATALOG = [
@@ -101,12 +105,65 @@ const PRODUCT_CATALOG = [
     imageEmoji: "☁️"
   }
 ];
+      {isProfilePickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#4A3525]/40 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm rounded-3xl border border-[#EFE1DA] bg-[#FFFDFB] p-6 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setIsProfilePickerOpen(false)}
+              className="absolute right-5 top-5 text-[#8C7462] hover:text-[#4A3525]"
+              title="Close profile pictures"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="mb-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8C7462]">Profile style</p>
+              <h3 className="mt-1 font-serif text-2xl text-[#4A3525]">Switch your picture</h3>
+              <p className="mt-1 text-xs text-[#8C7462]">Choose a soft color or upload your own profile photo.</p>
+            </div>
+            <div className="mb-5 grid grid-cols-4 gap-3">
+              {PROFILE_PICTURES.map((picture) => (
+                <button
+                  key={picture.id}
+                  type="button"
+                  onClick={() => selectProfileColor(picture.color)}
+                  title={picture.label}
+                  className="h-14 rounded-full border-2 border-white shadow-sm ring-1 ring-[#D8CEBE] transition-transform hover:scale-110"
+                  style={{ backgroundColor: picture.color }}
+                />
+              ))}
+            </div>
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#5C4033] py-3 text-xs font-bold text-[#F9F6F0]">
+              <Camera className="h-4 w-4" />
+              Upload profile photo
+              <input type="file" accept="image/*" onChange={handleProfileUpload} className="hidden" />
+            </label>
+            {profilePhoto && (
+              <button
+                type="button"
+                onClick={() => selectProfileColor('')}
+                className="mt-3 w-full text-xs font-semibold text-[#8C7462] hover:text-[#4A3525]"
+              >
+                Remove profile picture
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
 
 const CHARM_OPTIONS = [
   { id: 'monogram', name: 'MAVI Gold Monogram Tag', price: 60, icon: '🏷️' },
   { id: 'ribbon', name: 'Mocha Satin Bow', price: 40, icon: '🎀' },
   { id: 'pearl', name: 'Faux Pearl Chain Accent', price: 80, icon: '📿' },
   { id: 'mini-pouch', name: 'Matching Mini Coin Pouch', price: 100, icon: '👛' }
+];
+
+const PROFILE_PICTURES = [
+  { id: 'cream', label: 'Cream', color: '#F4E5D7' },
+  { id: 'rose', label: 'Rose', color: '#E8BFC0' },
+  { id: 'sage', label: 'Sage', color: '#BFD2C1' },
+  { id: 'lavender', label: 'Lilac', color: '#D7C9E8' }
 ];
 
 export default function App() {
@@ -135,6 +192,14 @@ export default function App() {
   const [isOwnerLoginOpen, setIsOwnerLoginOpen] = useState(false);
   const [ownerPassword, setOwnerPassword] = useState('');
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [isProfilePickerOpen, setIsProfilePickerOpen] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState(() => {
+    try {
+      return localStorage.getItem('mavi-profile-photo') || '';
+    } catch {
+      return '';
+    }
+  });
   const [isPageReady, setIsPageReady] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState(() => {
     try {
@@ -163,6 +228,15 @@ export default function App() {
       showToast('Photo is too large to save in this browser');
     }
   }, [heroImageUrl]);
+
+  useEffect(() => {
+    try {
+      if (profilePhoto) localStorage.setItem('mavi-profile-photo', profilePhoto);
+      else localStorage.removeItem('mavi-profile-photo');
+    } catch {
+      showToast('Profile picture could not be saved');
+    }
+  }, [profilePhoto]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -333,6 +407,29 @@ export default function App() {
     setIsEditMode(false);
   };
 
+  const deleteProduct = (productId) => {
+    if (!window.confirm('Delete this product from your shop?')) return;
+    setEditedCatalog((prev) => prev.filter((product) => product.id !== productId));
+    showToast('Product deleted');
+  };
+
+  const selectProfileColor = (color) => {
+    setProfilePhoto(color);
+    setIsProfilePickerOpen(false);
+  };
+
+  const handleProfileUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfilePhoto(reader.result);
+      setIsProfilePickerOpen(false);
+      showToast('Profile picture saved');
+    };
+    reader.readAsDataURL(file);
+  };
+
   const addNewProduct = () => {
     const newProduct = {
       id: Date.now(),
@@ -463,6 +560,21 @@ export default function App() {
 
           <div className="w-1/4 flex items-center justify-end space-x-4">
             <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-[#8C7462]">Shop</span>
+
+            <button
+              type="button"
+              onClick={() => setIsProfilePickerOpen(true)}
+              title="Switch profile picture"
+              className="h-9 w-9 overflow-hidden rounded-full border-2 border-[#D8CEBE] bg-[#EFE8E2] text-[#5C4033] transition-transform hover:scale-105"
+            >
+              {profilePhoto?.startsWith('data:') ? (
+                <img src={profilePhoto} alt="Profile" className="h-full w-full object-cover" />
+              ) : profilePhoto ? (
+                <span className="block h-full w-full" style={{ backgroundColor: profilePhoto }} />
+              ) : (
+                <User className="mx-auto h-4 w-4" />
+              )}
+            </button>
 
             {user ? (
               <div className="flex items-center space-x-2 bg-[#EFE8E2] px-3 py-1.5 rounded-full border border-[#D8CEBE]">
@@ -838,6 +950,17 @@ export default function App() {
 
                 {editedCatalog.map((product, index) => (
                   <div key={product.id} className="rounded-2xl border border-[#F1E7E0] bg-[#FDFBF7] p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#A08978]">Item {index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => deleteProduct(product.id)}
+                        className="flex items-center gap-1 rounded-full border border-rose-200 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-rose-700 hover:bg-rose-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete item
+                      </button>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343] mb-1">Name</label>
