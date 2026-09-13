@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { 
   ShoppingBag, 
   Heart, 
@@ -135,6 +135,7 @@ export default function App() {
   const [isOwnerLoginOpen, setIsOwnerLoginOpen] = useState(false);
   const [ownerPassword, setOwnerPassword] = useState('');
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [isPageReady, setIsPageReady] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState('https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=1100&q=85');
   const [heroText, setHeroText] = useState({
     badge: 'real squishy texture',
@@ -143,6 +144,11 @@ export default function App() {
     cta: 'SHOP THE COLLECTION'
   });
   const [editedCatalog, setEditedCatalog] = useState(PRODUCT_CATALOG);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setIsPageReady(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -381,6 +387,10 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
+  const openHeroPhotoPicker = () => {
+    document.getElementById('hero-photo-upload')?.click();
+  };
+
   const runSmartSearch = (prompt) => {
     setSearchQuery(prompt);
     setSelectedCategory('ALL');
@@ -397,7 +407,7 @@ export default function App() {
   const canEdit = isOwnerMode && isDashboardOpen;
 
   return (
-    <div className="min-h-screen bg-[#F9F6F0] text-[#4A3525] font-sans selection:bg-[#E9E0D8]">
+    <div className={`min-h-screen bg-[#F9F6F0] text-[#4A3525] font-sans selection:bg-[#E9E0D8] ${isPageReady ? 'page-ready' : 'page-opening'}`}>
       {toastMessage && (
         <div className="fixed top-24 right-6 z-50 bg-[#4A3525] text-[#F9F6F0] px-5 py-3 rounded-2xl shadow-xl flex items-center space-x-2 text-xs font-semibold tracking-wide border border-[#6E5343]">
           <Sparkles className="w-4 h-4 text-amber-200" />
@@ -495,7 +505,7 @@ export default function App() {
 
       <section className="border-b border-[#F1E7E0] bg-[#FDF6F2] overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-[1fr_0.9fr] items-stretch min-h-[430px]">
-          <div className="py-14 sm:py-20 flex flex-col justify-center max-w-xl">
+          <div className="hero-copy py-14 sm:py-20 flex flex-col justify-center max-w-xl">
             <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-[#9B7B77] mb-5">
               {heroText.badge}
             </span>
@@ -518,7 +528,7 @@ export default function App() {
               {heroText.cta} <ChevronRight className="inline-block w-3.5 h-3.5 ml-1" />
             </button>
           </div>
-          <div className="relative min-h-[300px] lg:min-h-0 lg:my-8 overflow-hidden rounded-[2rem]">
+          <div className="hero-photo relative min-h-[300px] lg:min-h-0 lg:my-8 overflow-hidden rounded-[2rem]">
             <img
               src={heroImageUrl}
               alt="MAVI soft tote bag"
@@ -640,6 +650,20 @@ export default function App() {
                 >
                   Edit products
                 </button>
+                <button
+                  type="button"
+                  onClick={openHeroPhotoPicker}
+                  className="rounded-full border border-[#E8DCD1] px-4 py-2 text-xs font-bold text-[#F9F6F0]"
+                >
+                  Change home photo
+                </button>
+                <input
+                  id="hero-photo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleHeroImageUpload}
+                  className="hidden"
+                />
                 <button
                   type="button"
                   onClick={() => { addNewProduct(); setIsEditMode(true); }}
@@ -945,7 +969,7 @@ export default function App() {
         </div>
       )}
 
-      <section id="collection" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+      <section id="collection" className="product-collection max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
         {wishlistOnly && (
           <div className="mb-6 flex items-center justify-between">
             <h3 className="font-serif text-lg text-[#4A3525] font-bold">Your Saved Wishlist ({filteredProducts.length})</h3>
@@ -973,7 +997,7 @@ export default function App() {
               return (
                 <div 
                   key={product.id}
-                  className="bg-[#FDFBF7] rounded-3xl p-5 border border-[#EBE4D8] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
+                  className="product-card bg-[#FDFBF7] rounded-3xl p-5 border border-[#EBE4D8] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-3">
