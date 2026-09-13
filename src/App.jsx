@@ -15,12 +15,14 @@ import {
   ChevronRight,
   ShieldCheck,
   CheckCircle2
+  ,Bot, Bookmark, ShoppingCart
 } from 'lucide-react';
 
 const PRODUCT_CATALOG = [
   {
     id: 1,
     name: "Cloud Puff Tote",
+    category: "Everyday",
     price: 299,
     priceTier: 299,
     tag: "Soft Favorite",
@@ -41,6 +43,7 @@ const PRODUCT_CATALOG = [
   {
     id: 2,
     name: "Velvet Bubble Tote",
+    category: "Everyday",
     price: 399,
     priceTier: 399,
     tag: "Best Seller",
@@ -60,6 +63,7 @@ const PRODUCT_CATALOG = [
   {
     id: 3,
     name: "Mini Soft Carry Tote",
+    category: "Mini",
     price: 499,
     priceTier: 499,
     tag: "Elegant Ease",
@@ -79,6 +83,7 @@ const PRODUCT_CATALOG = [
   {
     id: 4,
     name: "Puff Weekend Tote",
+    category: "Weekend",
     price: 399,
     priceTier: 399,
     tag: "New Drop",
@@ -107,6 +112,7 @@ const CHARM_OPTIONS = [
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPriceTier, setSelectedPriceTier] = useState('ALL');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [wishlistOnly, setWishlistOnly] = useState(false);
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -129,6 +135,7 @@ export default function App() {
   const [isOwnerLoginOpen, setIsOwnerLoginOpen] = useState(false);
   const [ownerPassword, setOwnerPassword] = useState('');
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [heroImageUrl, setHeroImageUrl] = useState('https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=1100&q=85');
   const [heroText, setHeroText] = useState({
     badge: 'real squishy texture',
     headline: 'Soft tote bags with a plush everyday feel.',
@@ -143,17 +150,25 @@ export default function App() {
   };
 
   const filteredProducts = useMemo(() => {
+    const normalizedQuery = searchQuery.toLowerCase().trim();
+    const smartTerms = normalizedQuery.split(/\s+/).filter(Boolean).map((term) => ({
+      small: 'mini',
+      bag: 'tote',
+      pink: 'rose',
+      daily: 'everyday',
+      carry: 'tote'
+    }[term] || term));
     return catalog.filter((product) => {
-      const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.fabric.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.tag.toLowerCase().includes(searchQuery.toLowerCase());
+      const searchableText = [product.name, product.category, product.fabric, product.tag, product.description, ...product.colors.map((color) => color.name)].join(' ').toLowerCase();
+      const matchesSearch = !normalizedQuery || smartTerms.every((term) => searchableText.includes(term));
 
       const matchesTier = selectedPriceTier === 'ALL' || product.priceTier === Number(selectedPriceTier);
+      const matchesCategory = selectedCategory === 'ALL' || product.category === selectedCategory;
       const matchesWishlist = !wishlistOnly || wishlist.includes(product.id);
 
-      return matchesSearch && matchesTier && matchesWishlist;
+      return matchesSearch && matchesTier && matchesCategory && matchesWishlist;
     });
-  }, [searchQuery, selectedPriceTier, wishlistOnly, wishlist, catalog]);
+  }, [searchQuery, selectedPriceTier, selectedCategory, wishlistOnly, wishlist, catalog]);
 
   const toggleWishlist = (id) => {
     if (wishlist.includes(id)) {
@@ -302,6 +317,7 @@ export default function App() {
     const newProduct = {
       id: Date.now(),
       name: 'New Puff Tote',
+      category: 'Everyday',
       price: 299,
       priceTier: 299,
       tag: 'New Arrival',
@@ -355,6 +371,27 @@ export default function App() {
       ));
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleHeroImageUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setHeroImageUrl(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const runSmartSearch = (prompt) => {
+    setSearchQuery(prompt);
+    setSelectedCategory('ALL');
+    setWishlistOnly(false);
+    document.getElementById('collection')?.scrollIntoView({ behavior: 'smooth' });
+    showToast(`Smart search found ${prompt.toLowerCase()} matches`);
+  };
+
+  const purchaseProduct = (product) => {
+    openCustomizer(product);
+    showToast('Choose your color, then add it to your bag');
   };
 
   const canEdit = isOwnerMode && isDashboardOpen;
@@ -483,8 +520,8 @@ export default function App() {
           </div>
           <div className="relative min-h-[300px] lg:min-h-0 lg:my-8 overflow-hidden rounded-[2rem]">
             <img
-              src="https://images.unsplash.com/photo-1547949003-9792a18a2601?auto=format&fit=crop&w=1100&q=85"
-              alt="MAVI tote bag resting on a sunlit chair"
+              src={heroImageUrl}
+              alt="MAVI soft tote bag"
               className="absolute inset-0 w-full h-full object-cover"
             />
             <div className="absolute left-5 bottom-5 bg-[#F8F5EE]/90 backdrop-blur-sm px-4 py-3 rounded-2xl border border-[#F8F5EE]">
@@ -513,10 +550,10 @@ export default function App() {
           </div>
 
           <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8C7462]" />
+            <Bot className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7D8F7A]" />
             <input 
               type="text"
-              placeholder="Search tote name, fabric (e.g. Canvas, Quilted)..."
+              placeholder="Ask MAVI: small pink bag, soft daily tote..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full text-xs pl-10 pr-4 py-2.5 rounded-full border border-[#D8CEBE] bg-[#F9F6F0] focus:outline-none focus:ring-2 focus:ring-[#6E5343] placeholder-[#A08978]"
@@ -532,6 +569,21 @@ export default function App() {
           </div>
 
           <div className="flex items-center space-x-2 overflow-x-auto pb-2 md:pb-0">
+            <span className="text-xs font-bold text-[#6E5343] uppercase tracking-wider">Category:</span>
+            {['ALL', 'Everyday', 'Mini', 'Weekend'].map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-3 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                  selectedCategory === category
+                    ? 'bg-[#7D8F7A] text-[#FFF9F6] shadow-sm'
+                    : 'bg-[#F9F6F0] text-[#6E5343] border border-[#D8CEBE] hover:bg-[#EAE4DC]'
+                }`}
+              >
+                {category === 'ALL' ? 'All bags' : category}
+              </button>
+            ))}
+
             <span className="text-xs font-bold text-[#6E5343] uppercase tracking-wider flex items-center space-x-1 mr-1">
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span>Tier:</span>
@@ -560,6 +612,14 @@ export default function App() {
               </button>
             )}
           </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 px-2 text-[10px] text-[#8C7462]">
+          <span className="flex items-center gap-1 font-bold uppercase tracking-wider"><Bot className="h-3.5 w-3.5 text-[#7D8F7A]" /> Smart search</span>
+          {['small pink bag', 'soft everyday tote', 'weekend bag'].map((prompt) => (
+            <button key={prompt} type="button" onClick={() => runSmartSearch(prompt)} className="rounded-full border border-[#E4DBD0] bg-[#FDFBF7] px-3 py-1 hover:border-[#7D8F7A]">
+              {prompt}
+            </button>
+          ))}
         </div>
       </section>
 
@@ -696,6 +756,22 @@ export default function App() {
                 />
               </div>
 
+              <div className="rounded-2xl border border-[#F1E7E0] bg-[#FDFBF7] p-3 space-y-3">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343]">Main tote photo</label>
+                <input
+                  value={heroImageUrl}
+                  onChange={(e) => setHeroImageUrl(e.target.value)}
+                  className="w-full rounded-xl border border-[#E7D8D0] bg-white p-2 text-sm text-[#4A3525] outline-none"
+                  placeholder="Paste a tote image URL"
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleHeroImageUpload}
+                  className="w-full rounded-xl border border-[#E7D8D0] bg-white p-2 text-xs text-[#4A3525]"
+                />
+              </div>
+
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-[#6E5343]">Product cards</h4>
@@ -740,6 +816,22 @@ export default function App() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343] mb-1">Category</label>
+                        <select
+                          value={product.category || 'Everyday'}
+                          onChange={(e) => {
+                            const next = [...editedCatalog];
+                            next[index].category = e.target.value;
+                            setEditedCatalog(next);
+                          }}
+                          className="w-full rounded-xl border border-[#E7D8D0] bg-white p-2 text-sm text-[#4A3525] outline-none"
+                        >
+                          <option>Everyday</option>
+                          <option>Mini</option>
+                          <option>Weekend</option>
+                        </select>
+                      </div>
                       <div>
                         <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343] mb-1">Tag</label>
                         <input
@@ -951,13 +1043,22 @@ export default function App() {
                       </span>
                     </div>
 
-                    <button
-                      onClick={() => openCustomizer(product)}
-                      className="w-full bg-[#5C4033] hover:bg-[#4A3525] text-[#F9F6F0] font-semibold text-xs py-3 rounded-2xl shadow-sm flex items-center justify-center space-x-1.5 transition-all transform active:scale-95"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-                      <span>Order & Customize</span>
-                    </button>
+                    <div className="grid grid-cols-[1fr_auto] gap-2">
+                      <button
+                        onClick={() => purchaseProduct(product)}
+                        className="bg-[#5C4033] hover:bg-[#4A3525] text-[#F9F6F0] font-semibold text-xs py-3 rounded-2xl shadow-sm flex items-center justify-center gap-1.5 transition-all transform active:scale-95"
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5" />
+                        <span>Purchase</span>
+                      </button>
+                      <button
+                        onClick={() => toggleWishlist(product.id)}
+                        className={`rounded-2xl border px-3 transition-colors ${isLiked ? 'border-[#5C4033] bg-[#EFE8E2] text-[#5C4033]' : 'border-[#D8CEBE] text-[#8C7462] hover:bg-[#EFE8E2]'}`}
+                        title={isLiked ? 'Remove saved item' : 'Save item'}
+                      >
+                        <Bookmark className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
