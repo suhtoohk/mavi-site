@@ -211,6 +211,14 @@ export default function App() {
         return;
       }
 
+      if (!error && data && !data.catalog?.length) {
+        try {
+          await persistCloudContent(catalog, heroImageUrl);
+          showToast('Shared shop data initialized');
+        } catch {
+          showToast('Shared data needs one owner save');
+        }
+      }
     };
     loadCloudContent();
     return () => { isActive = false; };
@@ -403,8 +411,9 @@ export default function App() {
       setWishlist((previousWishlist) => previousWishlist.filter((id) => editedCatalog.some((product) => product.id === id)));
       setIsEditMode(false);
       showToast('Products saved for everyone');
-    } catch {
-      showToast('Cloud save failed. Run supabase-schema.sql first.');
+    } catch (error) {
+      console.error('Cloud save failed:', error);
+      showToast('Cloud save failed. Check the Supabase table policies.');
     }
   };
 
