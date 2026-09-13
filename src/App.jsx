@@ -140,7 +140,14 @@ export default function App() {
   const [embroideryText, setEmbroideryText] = useState('');
   const [handleLength, setHandleLength] = useState('Standard (25cm)');
   const [orderReceipt, setOrderReceipt] = useState(null);
-  const [catalog, setCatalog] = useState(PRODUCT_CATALOG);
+  const [catalog, setCatalog] = useState(() => {
+    try {
+      const savedCatalog = localStorage.getItem('mavi-catalog');
+      return savedCatalog ? JSON.parse(savedCatalog) : PRODUCT_CATALOG;
+    } catch {
+      return PRODUCT_CATALOG;
+    }
+  });
   const [isEditMode, setIsEditMode] = useState(false);
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [isOwnerLoginOpen, setIsOwnerLoginOpen] = useState(false);
@@ -191,6 +198,10 @@ export default function App() {
       showToast('Profile picture could not be saved');
     }
   }, [profilePhoto]);
+
+  useEffect(() => {
+    setEditedCatalog(catalog);
+  }, [catalog]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -351,9 +362,15 @@ export default function App() {
   };
 
   const saveEditor = () => {
-    setCatalog(editedCatalog);
-    setIsEditMode(false);
-    showToast('Website updated');
+    try {
+      localStorage.setItem('mavi-catalog', JSON.stringify(editedCatalog));
+      setCatalog(editedCatalog);
+      setWishlist((previousWishlist) => previousWishlist.filter((id) => editedCatalog.some((product) => product.id === id)));
+      setIsEditMode(false);
+      showToast('Products saved on this device');
+    } catch {
+      showToast('Products could not be saved. Try smaller images.');
+    }
   };
 
   const cancelEditor = () => {
