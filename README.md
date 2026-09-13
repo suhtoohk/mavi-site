@@ -2,6 +2,10 @@
 
 MAVI storefront deployment refreshed.
 
+## Shared shop data
+
+Run `supabase-schema.sql` once in the Supabase SQL Editor. After that, owner product saves are shared with every visitor.
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:

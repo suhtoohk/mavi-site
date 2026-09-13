@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { supabase } from './supabaseClient';
 import { 
   ShoppingBag, 
   Heart, 
@@ -177,9 +178,42 @@ export default function App() {
   });
   const [editedCatalog, setEditedCatalog] = useState(PRODUCT_CATALOG);
 
+  const persistCloudContent = async (nextCatalog, nextHeroImageUrl = heroImageUrl) => {
+    const { error } = await supabase.from('site_content').upsert({
+      id: 1,
+      catalog: nextCatalog,
+      hero_image_url: nextHeroImageUrl,
+      updated_at: new Date().toISOString()
+    });
+    if (error) throw error;
+  };
+
   useEffect(() => {
     const frame = requestAnimationFrame(() => setIsPageReady(true));
     return () => cancelAnimationFrame(frame);
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+    const loadCloudContent = async () => {
+      const { data, error } = await supabase
+        .from('site_content')
+        .select('catalog, hero_image_url')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (!isActive) return;
+      if (!error && data?.catalog?.length) {
+        setCatalog(data.catalog);
+        setEditedCatalog(data.catalog);
+        if (data.hero_image_url) setHeroImageUrl(data.hero_image_url);
+        showToast('Shared shop data loaded');
+        return;
+      }
+
+    };
+    loadCloudContent();
+    return () => { isActive = false; };
   }, []);
 
   useEffect(() => {
@@ -361,15 +395,16 @@ export default function App() {
     setIsEditMode(true);
   };
 
-  const saveEditor = () => {
+  const saveEditor = async () => {
     try {
       localStorage.setItem('mavi-catalog', JSON.stringify(editedCatalog));
+      await persistCloudContent(editedCatalog);
       setCatalog(editedCatalog);
       setWishlist((previousWishlist) => previousWishlist.filter((id) => editedCatalog.some((product) => product.id === id)));
       setIsEditMode(false);
-      showToast('Products saved on this device');
+      showToast('Products saved for everyone');
     } catch {
-      showToast('Products could not be saved. Try smaller images.');
+      showToast('Cloud save failed. Run supabase-schema.sql first.');
     }
   };
 
