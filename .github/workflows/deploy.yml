@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,20 +29,6 @@ jobs:
         run: cp index.source.html index.html
       - name: Build
         run: npm run build
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./dist
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Download compiled site
-        uses: actions/download-artifact@v4
-        with:
-          name: github-pages
-          path: dist
       - name: Publish compiled site
         uses: peaceiris/actions-gh-pages@v4
         with:
