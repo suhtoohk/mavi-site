@@ -105,52 +105,6 @@ const PRODUCT_CATALOG = [
     imageEmoji: "☁️"
   }
 ];
-      {isProfilePickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#4A3525]/40 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-sm rounded-3xl border border-[#EFE1DA] bg-[#FFFDFB] p-6 shadow-2xl">
-            <button
-              type="button"
-              onClick={() => setIsProfilePickerOpen(false)}
-              className="absolute right-5 top-5 text-[#8C7462] hover:text-[#4A3525]"
-              title="Close profile pictures"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <div className="mb-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8C7462]">Profile style</p>
-              <h3 className="mt-1 font-serif text-2xl text-[#4A3525]">Switch your picture</h3>
-              <p className="mt-1 text-xs text-[#8C7462]">Choose a soft color or upload your own profile photo.</p>
-            </div>
-            <div className="mb-5 grid grid-cols-4 gap-3">
-              {PROFILE_PICTURES.map((picture) => (
-                <button
-                  key={picture.id}
-                  type="button"
-                  onClick={() => selectProfileColor(picture.color)}
-                  title={picture.label}
-                  className="h-14 rounded-full border-2 border-white shadow-sm ring-1 ring-[#D8CEBE] transition-transform hover:scale-110"
-                  style={{ backgroundColor: picture.color }}
-                />
-              ))}
-            </div>
-            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#5C4033] py-3 text-xs font-bold text-[#F9F6F0]">
-              <Camera className="h-4 w-4" />
-              Upload profile photo
-              <input type="file" accept="image/*" onChange={handleProfileUpload} className="hidden" />
-            </label>
-            {profilePhoto && (
-              <button
-                type="button"
-                onClick={() => selectProfileColor('')}
-                className="mt-3 w-full text-xs font-semibold text-[#8C7462] hover:text-[#4A3525]"
-              >
-                Remove profile picture
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
 
 const CHARM_OPTIONS = [
   { id: 'monogram', name: 'MAVI Gold Monogram Tag', price: 60, icon: '🏷️' },
@@ -866,6 +820,52 @@ export default function App() {
               </button>
               <p className="text-center text-[10px] text-[#A08978]">Demo password: mavi-owner</p>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isProfilePickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#4A3525]/40 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm rounded-3xl border border-[#EFE1DA] bg-[#FFFDFB] p-6 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setIsProfilePickerOpen(false)}
+              className="absolute right-5 top-5 text-[#8C7462] hover:text-[#4A3525]"
+              title="Close profile pictures"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="mb-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8C7462]">Profile style</p>
+              <h3 className="mt-1 font-serif text-2xl text-[#4A3525]">Switch your picture</h3>
+              <p className="mt-1 text-xs text-[#8C7462]">Choose a soft color or upload your own profile photo.</p>
+            </div>
+            <div className="mb-5 grid grid-cols-4 gap-3">
+              {PROFILE_PICTURES.map((picture) => (
+                <button
+                  key={picture.id}
+                  type="button"
+                  onClick={() => selectProfileColor(picture.color)}
+                  title={picture.label}
+                  className="h-14 rounded-full border-2 border-white shadow-sm ring-1 ring-[#D8CEBE] transition-transform hover:scale-110"
+                  style={{ backgroundColor: picture.color }}
+                />
+              ))}
+            </div>
+            <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#5C4033] py-3 text-xs font-bold text-[#F9F6F0]">
+              <Camera className="h-4 w-4" />
+              Upload profile photo
+              <input type="file" accept="image/*" onChange={handleProfileUpload} className="hidden" />
+            </label>
+            {profilePhoto && (
+              <button
+                type="button"
+                onClick={() => selectProfileColor('')}
+                className="mt-3 w-full text-xs font-semibold text-[#8C7462] hover:text-[#4A3525]"
+              >
+                Remove profile picture
+              </button>
+            )}
           </div>
         </div>
       )}
