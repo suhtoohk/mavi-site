@@ -136,7 +136,13 @@ export default function App() {
   const [ownerPassword, setOwnerPassword] = useState('');
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isPageReady, setIsPageReady] = useState(false);
-  const [heroImageUrl, setHeroImageUrl] = useState('https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=1100&q=85');
+  const [heroImageUrl, setHeroImageUrl] = useState(() => {
+    try {
+      return localStorage.getItem('mavi-hero-image') || 'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=1100&q=85';
+    } catch {
+      return 'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=1100&q=85';
+    }
+  });
   const [heroText, setHeroText] = useState({
     badge: 'real squishy texture',
     headline: 'Soft tote bags with a plush everyday feel.',
@@ -149,6 +155,14 @@ export default function App() {
     const frame = requestAnimationFrame(() => setIsPageReady(true));
     return () => cancelAnimationFrame(frame);
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mavi-hero-image', heroImageUrl);
+    } catch {
+      showToast('Photo is too large to save in this browser');
+    }
+  }, [heroImageUrl]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -382,8 +396,22 @@ export default function App() {
   const handleHeroImageUpload = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = () => setHeroImageUrl(reader.result);
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => {
+        const maxSize = 1400;
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(image.width * scale);
+        canvas.height = Math.round(image.height * scale);
+        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+        setHeroImageUrl(canvas.toDataURL('image/jpeg', 0.82));
+        showToast('Homepage photo saved');
+      };
+      image.src = reader.result;
+    };
     reader.readAsDataURL(file);
   };
 
