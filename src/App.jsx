@@ -20,7 +20,9 @@ import {
   Bookmark,
   ShoppingCart,
   Trash2,
-  Camera
+  Camera,
+  MessageCircle,
+  Send
 } from 'lucide-react';
 
 const PRODUCT_CATALOG = [
@@ -155,6 +157,11 @@ export default function App() {
   const [ownerPassword, setOwnerPassword] = useState('');
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isProfilePickerOpen, setIsProfilePickerOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatMessages, setChatMessages] = useState([
+    { id: 1, sender: 'mavi', text: 'Hi! How can we help you find your perfect MAVI tote?' }
+  ]);
   const [profilePhoto, setProfilePhoto] = useState(() => {
     try {
       return localStorage.getItem('mavi-profile-photo') || '';
@@ -399,16 +406,18 @@ export default function App() {
 
   const openEditor = () => {
     if (!isOwnerMode) return;
-    setEditedCatalog(catalog);
+    setEditedCatalog(structuredClone(catalog));
     setIsEditMode(true);
   };
 
   const saveEditor = async () => {
     try {
-      localStorage.setItem('mavi-catalog', JSON.stringify(editedCatalog));
-      await persistCloudContent(editedCatalog);
-      setCatalog(editedCatalog);
-      setWishlist((previousWishlist) => previousWishlist.filter((id) => editedCatalog.some((product) => product.id === id)));
+      const catalogToSave = structuredClone(editedCatalog);
+      localStorage.setItem('mavi-catalog', JSON.stringify(catalogToSave));
+      await persistCloudContent(catalogToSave);
+      setCatalog(catalogToSave);
+      setEditedCatalog(structuredClone(catalogToSave));
+      setWishlist((previousWishlist) => previousWishlist.filter((id) => catalogToSave.some((product) => product.id === id)));
       setIsEditMode(false);
       showToast('Products saved for everyone');
     } catch (error) {
@@ -418,8 +427,26 @@ export default function App() {
   };
 
   const cancelEditor = () => {
-    setEditedCatalog(catalog);
+    setEditedCatalog(structuredClone(catalog));
     setIsEditMode(false);
+  };
+
+  const updateEditedProduct = (productIndex, field, value) => {
+    setEditedCatalog((previousCatalog) => previousCatalog.map((product, index) => (
+      index === productIndex ? { ...product, [field]: value } : product
+    )));
+  };
+
+  const submitChatMessage = (event) => {
+    event.preventDefault();
+    const message = chatMessage.trim();
+    if (!message) return;
+    setChatMessages((previousMessages) => [
+      ...previousMessages,
+      { id: Date.now(), sender: 'shopper', text: message },
+      { id: Date.now() + 1, sender: 'mavi', text: 'Thanks for your message! We will help you choose the right MAVI tote shortly.' }
+    ]);
+    setChatMessage('');
   };
 
   const deleteProduct = (productId) => {
@@ -575,6 +602,16 @@ export default function App() {
 
           <div className="w-1/4 flex items-center justify-end space-x-4">
             <span className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-[#8C7462]">Shop</span>
+
+            <button
+              type="button"
+              onClick={() => setIsChatOpen(true)}
+              className="flex items-center gap-1.5 rounded-full border border-[#D8CEBE] px-3 py-1.5 text-xs font-semibold text-[#5C4033] transition-colors hover:bg-[#EFE8E2]"
+              title="Chat with MAVI"
+            >
+              <MessageCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">Chat</span>
+            </button>
 
             <button
               type="button"
@@ -785,6 +822,9 @@ export default function App() {
               {prompt}
             </button>
           ))}
+          <button type="button" onClick={() => setIsChatOpen(true)} className="flex items-center gap-1 rounded-full bg-[#5C4033] px-3 py-1 font-bold text-[#F9F6F0] hover:bg-[#4A3525]">
+            <MessageCircle className="h-3.5 w-3.5" /> Chat with MAVI
+          </button>
         </div>
       </section>
 
@@ -1027,11 +1067,7 @@ export default function App() {
                         <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343] mb-1">Name</label>
                         <input
                           value={product.name}
-                          onChange={(e) => {
-                            const next = [...editedCatalog];
-                            next[index].name = e.target.value;
-                            setEditedCatalog(next);
-                          }}
+                          onChange={(e) => updateEditedProduct(index, 'name', e.target.value)}
                           className="w-full rounded-xl border border-[#E7D8D0] bg-white p-2 text-sm text-[#4A3525] outline-none ring-0"
                         />
                       </div>
@@ -1041,10 +1077,10 @@ export default function App() {
                           type="number"
                           value={product.price}
                           onChange={(e) => {
-                            const next = [...editedCatalog];
-                            next[index].price = Number(e.target.value);
-                            next[index].priceTier = Number(e.target.value);
-                            setEditedCatalog(next);
+                            const price = Number(e.target.value);
+                            setEditedCatalog((previousCatalog) => previousCatalog.map((item, itemIndex) => (
+                              itemIndex === index ? { ...item, price, priceTier: price } : item
+                            )));
                           }}
                           className="w-full rounded-xl border border-[#E7D8D0] bg-white p-2 text-sm text-[#4A3525] outline-none ring-0"
                         />
@@ -1056,11 +1092,7 @@ export default function App() {
                         <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343] mb-1">Category</label>
                         <select
                           value={product.category || 'Everyday'}
-                          onChange={(e) => {
-                            const next = [...editedCatalog];
-                            next[index].category = e.target.value;
-                            setEditedCatalog(next);
-                          }}
+                          onChange={(e) => updateEditedProduct(index, 'category', e.target.value)}
                           className="w-full rounded-xl border border-[#E7D8D0] bg-white p-2 text-sm text-[#4A3525] outline-none"
                         >
                           <option>Everyday</option>
@@ -1072,11 +1104,7 @@ export default function App() {
                         <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343] mb-1">Tag</label>
                         <input
                           value={product.tag}
-                          onChange={(e) => {
-                            const next = [...editedCatalog];
-                            next[index].tag = e.target.value;
-                            setEditedCatalog(next);
-                          }}
+                          onChange={(e) => updateEditedProduct(index, 'tag', e.target.value)}
                           className="w-full rounded-xl border border-[#E7D8D0] bg-white p-2 text-sm text-[#4A3525] outline-none ring-0"
                         />
                       </div>
@@ -1084,11 +1112,7 @@ export default function App() {
                         <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343] mb-1">Fabric</label>
                         <input
                           value={product.fabric}
-                          onChange={(e) => {
-                            const next = [...editedCatalog];
-                            next[index].fabric = e.target.value;
-                            setEditedCatalog(next);
-                          }}
+                          onChange={(e) => updateEditedProduct(index, 'fabric', e.target.value)}
                           className="w-full rounded-xl border border-[#E7D8D0] bg-white p-2 text-sm text-[#4A3525] outline-none ring-0"
                         />
                       </div>
@@ -1098,11 +1122,7 @@ export default function App() {
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343] mb-1">Product image URL</label>
                       <input
                         value={product.imageUrl}
-                        onChange={(e) => {
-                          const next = [...editedCatalog];
-                          next[index].imageUrl = e.target.value;
-                          setEditedCatalog(next);
-                        }}
+                        onChange={(e) => updateEditedProduct(index, 'imageUrl', e.target.value)}
                         className="w-full rounded-xl border border-[#E7D8D0] bg-white p-2 text-sm text-[#4A3525] outline-none ring-0"
                       />
                     </div>
@@ -1121,11 +1141,7 @@ export default function App() {
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343] mb-1">Description</label>
                       <textarea
                         value={product.description}
-                        onChange={(e) => {
-                          const next = [...editedCatalog];
-                          next[index].description = e.target.value;
-                          setEditedCatalog(next);
-                        }}
+                        onChange={(e) => updateEditedProduct(index, 'description', e.target.value)}
                         rows={2}
                         className="w-full rounded-xl border border-[#E7D8D0] bg-white p-2 text-sm text-[#4A3525] outline-none ring-0"
                       />
@@ -1680,6 +1696,41 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {isChatOpen && (
+        <div className="fixed bottom-24 right-4 z-50 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-[#D8CEBE] bg-[#FDFBF7] shadow-2xl">
+          <div className="flex items-center justify-between bg-[#5C4033] px-5 py-4 text-[#F9F6F0]">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#E8DCD1]">MAVI concierge</p>
+              <h3 className="font-serif text-lg">Chat with us</h3>
+            </div>
+            <button type="button" onClick={() => setIsChatOpen(false)} title="Close chat" className="rounded-full p-1 hover:bg-[#6E5343]"><X className="h-4 w-4" /></button>
+          </div>
+          <div className="max-h-72 space-y-3 overflow-y-auto p-4">
+            {chatMessages.map((message) => (
+              <div key={message.id} className={`flex ${message.sender === 'shopper' ? 'justify-end' : 'justify-start'}`}>
+                <p className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${message.sender === 'shopper' ? 'bg-[#5C4033] text-[#F9F6F0]' : 'bg-[#F3EEEA] text-[#5C4033]'}`}>
+                  {message.text}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2 px-4 pb-3">
+            {['Which tote is best for everyday use?', 'Can I customize a tote?'].map((question) => (
+              <button key={question} type="button" onClick={() => setChatMessage(question)} className="rounded-full border border-[#D8CEBE] px-3 py-1.5 text-[10px] text-[#6E5343] hover:bg-[#F3EEEA]">{question}</button>
+            ))}
+          </div>
+          <form onSubmit={submitChatMessage} className="flex gap-2 border-t border-[#EBE4D8] p-3">
+            <input value={chatMessage} onChange={(event) => setChatMessage(event.target.value)} placeholder="Write a message..." aria-label="Chat message" className="min-w-0 flex-1 rounded-xl border border-[#E7D8D0] bg-white px-3 py-2 text-xs text-[#4A3525] outline-none focus:border-[#5C4033]" />
+            <button type="submit" title="Send message" className="rounded-xl bg-[#5C4033] px-3 text-[#F9F6F0] hover:bg-[#4A3525]"><Send className="h-4 w-4" /></button>
+          </form>
+        </div>
+      )}
+
+      <button type="button" onClick={() => setIsChatOpen((open) => !open)} title="Chat with MAVI" className="fixed bottom-5 right-4 z-40 flex items-center gap-2 rounded-full bg-[#5C4033] px-4 py-3 text-xs font-bold text-[#F9F6F0] shadow-xl transition-transform hover:scale-105">
+        <MessageCircle className="h-4 w-4" />
+        <span>Chat with MAVI</span>
+      </button>
 
       <footer className="mt-16 border-t border-[#EBE4D8] bg-[#F3EEEA] py-12">
         <div className="max-w-7xl mx-auto px-4 text-center space-y-4">
