@@ -863,9 +863,6 @@ export default function App() {
               {prompt}
             </button>
           ))}
-          <button type="button" onClick={() => setIsChatOpen(true)} className="flex items-center gap-1 rounded-full bg-[#5C4033] px-3 py-1 font-bold text-[#F9F6F0] hover:bg-[#4A3525]">
-            <MessageCircle className="h-3.5 w-3.5" /> Chat with MAVI
-          </button>
         </div>
       </section>
 
@@ -1782,6 +1779,16 @@ export default function App() {
           </form>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => setIsChatOpen((open) => !open)}
+        title="Chat with MAVI"
+        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-[#5C4033] px-4 py-3 text-xs font-bold text-[#F9F6F0] shadow-xl transition-transform hover:scale-105"
+      >
+        <MessageCircle className="h-4 w-4" />
+        <span>Chat with MAVI</span>
+      </button>
 
       <footer className="mt-16 border-t border-[#EBE4D8] bg-[#F3EEEA] py-12">
         <div className="max-w-7xl mx-auto px-4 text-center space-y-4">
