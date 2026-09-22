@@ -656,16 +656,6 @@ export default function App() {
 
             <button
               type="button"
-              onClick={() => setIsChatOpen(true)}
-              className="flex items-center gap-1.5 rounded-full border border-[#D8CEBE] px-3 py-1.5 text-xs font-semibold text-[#5C4033] transition-colors hover:bg-[#EFE8E2]"
-              title="Chat with MAVI"
-            >
-              <MessageCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">Chat</span>
-            </button>
-
-            <button
-              type="button"
               onClick={() => setIsProfilePickerOpen(true)}
               title="Switch profile picture"
               className="h-9 w-9 overflow-hidden rounded-full border-2 border-[#D8CEBE] bg-[#EFE8E2] text-[#5C4033] transition-transform hover:scale-105"
@@ -1792,11 +1782,6 @@ export default function App() {
           </form>
         </div>
       )}
-
-      <button type="button" onClick={() => setIsChatOpen((open) => !open)} title="Chat with MAVI" className="fixed bottom-5 right-4 z-40 flex items-center gap-2 rounded-full bg-[#5C4033] px-4 py-3 text-xs font-bold text-[#F9F6F0] shadow-xl transition-transform hover:scale-105">
-        <MessageCircle className="h-4 w-4" />
-        <span>Chat with MAVI</span>
-      </button>
 
       <footer className="mt-16 border-t border-[#EBE4D8] bg-[#F3EEEA] py-12">
         <div className="max-w-7xl mx-auto px-4 text-center space-y-4">
