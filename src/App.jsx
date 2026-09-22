@@ -22,7 +22,11 @@ import {
   Trash2,
   Camera,
   MessageCircle,
-  Send
+  Send,
+  MapPin,
+  Globe2,
+  CreditCard,
+  Wallet
 } from 'lucide-react';
 
 const PRODUCT_CATALOG = [
@@ -143,6 +147,19 @@ export default function App() {
   const [embroideryText, setEmbroideryText] = useState('');
   const [handleLength, setHandleLength] = useState('Standard (25cm)');
   const [orderReceipt, setOrderReceipt] = useState(null);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [checkoutData, setCheckoutData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    country: 'Thailand',
+    address: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    shippingMethod: 'worldwide-standard',
+    paymentMethod: 'promptpay'
+  });
   const [catalog, setCatalog] = useState(() => {
     try {
       const savedCatalog = localStorage.getItem('mavi-catalog');
@@ -390,18 +407,69 @@ export default function App() {
 
   const totalCartPrice = cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
 
-  const handlePlaceOrder = () => {
+  const shippingCost = checkoutData.shippingMethod === 'worldwide-express' ? 850 : checkoutData.country === 'Thailand' ? 0 : 450;
+  const checkoutTotal = totalCartPrice + shippingCost;
+
+  const updateCheckout = (field, value) => {
+    setCheckoutData((previousData) => ({ ...previousData, [field]: value }));
+  };
+
+  const openCheckout = () => {
     if (cart.length === 0) return;
+    setIsCartOpen(false);
+    setIsCheckoutOpen(true);
+  };
+
+  const handlePlaceOrder = async (event) => {
+    event.preventDefault();
+    if (cart.length === 0) return;
+    if (!checkoutData.name || !checkoutData.email || !checkoutData.country || !checkoutData.address || !checkoutData.city || !checkoutData.postalCode) {
+      showToast('Please complete your shipping details');
+      return;
+    }
     const receiptData = {
       orderId: `MAVI-${Math.floor(100000 + Math.random() * 900000)}`,
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       items: [...cart],
-      total: totalCartPrice,
-      customer: user ? user.name : 'Guest Customer'
+      subtotal: totalCartPrice,
+      shipping: shippingCost,
+      total: checkoutTotal,
+      customer: checkoutData.name || (user ? user.name : 'Guest Customer'),
+      email: checkoutData.email,
+      paymentMethod: checkoutData.paymentMethod,
+      paymentStatus: 'Pending payment',
+      shippingAddress: `${checkoutData.address}, ${checkoutData.city}, ${checkoutData.state ? `${checkoutData.state}, ` : ''}${checkoutData.postalCode}, ${checkoutData.country}`
     };
+    try {
+      localStorage.setItem('mavi-last-order', JSON.stringify(receiptData));
+    } catch {
+      showToast('Order created, but could not be saved in this browser');
+    }
+    const { error: orderError } = await supabase.from('orders').insert({
+      order_number: receiptData.orderId,
+      customer_name: receiptData.customer,
+      customer_email: receiptData.email,
+      customer_phone: checkoutData.phone,
+      shipping_address: {
+        country: checkoutData.country,
+        address: checkoutData.address,
+        city: checkoutData.city,
+        state: checkoutData.state,
+        postal_code: checkoutData.postalCode
+      },
+      shipping_method: checkoutData.shippingMethod,
+      shipping_amount: receiptData.shipping,
+      subtotal: receiptData.subtotal,
+      total_amount: receiptData.total,
+      payment_method: receiptData.paymentMethod,
+      payment_status: 'pending',
+      order_status: 'pending',
+      items: receiptData.items
+    });
+    if (orderError) console.warn('Order database save skipped:', orderError.message);
     setOrderReceipt(receiptData);
     setCart([]);
-    setIsCartOpen(false);
+    setIsCheckoutOpen(false);
   };
 
   const openEditor = () => {
@@ -1672,8 +1740,8 @@ export default function App() {
                       <span>฿{totalCartPrice}</span>
                     </div>
                     <div className="flex justify-between text-[#8C7462]">
-                      <span>Thailand Standard Express Shipping</span>
-                      <span className="text-emerald-700 font-bold">FREE</span>
+                      <span>Worldwide shipping</span>
+                      <span className="text-emerald-700 font-bold">From FREE</span>
                     </div>
                     <div className="flex justify-between font-serif font-bold text-[#4A3525] text-base pt-2 border-t border-[#EBE4D8]">
                       <span>Total Amount</span>
@@ -1682,14 +1750,74 @@ export default function App() {
                   </div>
 
                   <button 
-                    onClick={handlePlaceOrder}
+                    onClick={openCheckout}
                     className="w-full bg-[#5C4033] hover:bg-[#4A3525] text-[#F9F6F0] font-bold py-3.5 rounded-2xl shadow-md text-xs tracking-wider transition-all"
                   >
-                    PLACE DEMO ORDER (฿{totalCartPrice})
+                    CHECKOUT (฿{totalCartPrice})
                   </button>
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {isCheckoutOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#4A3525]/45 p-4 backdrop-blur-sm">
+          <div className="mx-auto my-6 max-w-2xl rounded-3xl border border-[#D8CEBE] bg-[#FDFBF7] p-5 shadow-2xl sm:p-7">
+            <div className="flex items-start justify-between border-b border-[#EBE4D8] pb-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8C7462]">MAVI checkout</p>
+                <h3 className="mt-1 font-serif text-2xl font-bold text-[#4A3525]">Delivery and payment</h3>
+                <p className="mt-1 text-xs text-[#8C7462]">We deliver worldwide. Payment is confirmed after your selected method is completed.</p>
+              </div>
+              <button type="button" onClick={() => setIsCheckoutOpen(false)} title="Close checkout" className="p-1 text-[#8C7462] hover:text-[#4A3525]"><X className="h-5 w-5" /></button>
+            </div>
+
+            <form onSubmit={handlePlaceOrder} className="mt-5 space-y-5">
+              <section>
+                <div className="mb-3 flex items-center gap-2 text-sm font-bold text-[#5C4033]"><MapPin className="h-4 w-4" /> Customer and shipping address</div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    ['name', 'Full name', 'e.g. Mavi Customer'],
+                    ['email', 'Email', 'you@example.com'],
+                    ['phone', 'Phone number', '+66'],
+                    ['country', 'Country', 'Thailand']
+                  ].map(([field, label, placeholder]) => (
+                    <label key={field} className="text-[10px] font-bold uppercase tracking-wider text-[#6E5343]">
+                      {label}
+                      <input required={field !== 'phone'} type={field === 'email' ? 'email' : 'text'} value={checkoutData[field]} onChange={(event) => updateCheckout(field, event.target.value)} placeholder={placeholder} className="mt-1 w-full rounded-xl border border-[#E7D8D0] bg-white p-2.5 text-sm font-normal normal-case tracking-normal text-[#4A3525] outline-none focus:border-[#5C4033]" />
+                    </label>
+                  ))}
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#6E5343] sm:col-span-2">Street address<input required value={checkoutData.address} onChange={(event) => updateCheckout('address', event.target.value)} placeholder="House number and street" className="mt-1 w-full rounded-xl border border-[#E7D8D0] bg-white p-2.5 text-sm font-normal normal-case tracking-normal text-[#4A3525] outline-none focus:border-[#5C4033]" /></label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#6E5343]">City<input required value={checkoutData.city} onChange={(event) => updateCheckout('city', event.target.value)} className="mt-1 w-full rounded-xl border border-[#E7D8D0] bg-white p-2.5 text-sm font-normal normal-case tracking-normal text-[#4A3525] outline-none focus:border-[#5C4033]" /></label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#6E5343]">State / province<input value={checkoutData.state} onChange={(event) => updateCheckout('state', event.target.value)} className="mt-1 w-full rounded-xl border border-[#E7D8D0] bg-white p-2.5 text-sm font-normal normal-case tracking-normal text-[#4A3525] outline-none focus:border-[#5C4033]" /></label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#6E5343]">Postal code<input required value={checkoutData.postalCode} onChange={(event) => updateCheckout('postalCode', event.target.value)} className="mt-1 w-full rounded-xl border border-[#E7D8D0] bg-white p-2.5 text-sm font-normal normal-case tracking-normal text-[#4A3525] outline-none focus:border-[#5C4033]" /></label>
+                </div>
+              </section>
+
+              <section className="border-t border-[#EBE4D8] pt-5">
+                <div className="mb-3 flex items-center gap-2 text-sm font-bold text-[#5C4033]"><Globe2 className="h-4 w-4" /> Worldwide delivery</div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[['worldwide-standard', 'Standard worldwide delivery', checkoutData.country === 'Thailand' ? 'Free' : '฿450'], ['worldwide-express', 'Express worldwide delivery', '฿850']].map(([value, label, price]) => (
+                    <label key={value} className={`flex cursor-pointer items-center justify-between rounded-2xl border p-3 text-xs ${checkoutData.shippingMethod === value ? 'border-[#5C4033] bg-[#F3EEEA]' : 'border-[#E7D8D0]'}`}>
+                      <span><input type="radio" name="shipping" value={value} checked={checkoutData.shippingMethod === value} onChange={(event) => updateCheckout('shippingMethod', event.target.value)} className="mr-2 accent-[#5C4033]" />{label}</span><strong>{price}</strong>
+                    </label>
+                  ))}
+                </div>
+              </section>
+
+              <section className="border-t border-[#EBE4D8] pt-5">
+                <div className="mb-3 flex items-center gap-2 text-sm font-bold text-[#5C4033]"><CreditCard className="h-4 w-4" /> Payment method</div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {[['promptpay', 'PromptPay', CreditCard], ['card', 'Credit / debit card', CreditCard], ['ewallet', 'E-wallet', Wallet]].map(([value, label, Icon]) => (
+                    <label key={value} className={`flex cursor-pointer flex-col gap-2 rounded-2xl border p-3 text-xs ${checkoutData.paymentMethod === value ? 'border-[#5C4033] bg-[#F3EEEA]' : 'border-[#E7D8D0]'}`}><span className="flex items-center gap-2"><input type="radio" name="payment" value={value} checked={checkoutData.paymentMethod === value} onChange={(event) => updateCheckout('paymentMethod', event.target.value)} className="accent-[#5C4033]" /><Icon className="h-4 w-4" />{label}</span><span className="text-[10px] text-[#8C7462]">Payment confirmation step follows</span></label>
+                  ))}
+                </div>
+              </section>
+
+              <div className="flex items-center justify-between border-t border-[#EBE4D8] pt-5"><div><span className="block text-[10px] font-bold uppercase tracking-wider text-[#8C7462]">Order total</span><strong className="font-serif text-2xl text-[#4A3525]">฿{checkoutTotal}</strong></div><button type="submit" className="rounded-2xl bg-[#5C4033] px-5 py-3 text-xs font-bold text-[#F9F6F0] shadow-md hover:bg-[#4A3525]">CONTINUE TO PAYMENT</button></div>
+            </form>
           </div>
         </div>
       )}
@@ -1720,9 +1848,11 @@ export default function App() {
               </div>
 
               <div className="flex justify-between text-[#4A3525] font-serif font-bold text-sm pt-2 border-t border-[#D8CEBE]">
-                <span>Total Paid</span>
+                <span>Total ({orderReceipt.paymentStatus})</span>
                 <span>฿{orderReceipt.total}</span>
               </div>
+              <p className="pt-1 text-[10px] text-[#8C7462]">Payment method: {orderReceipt.paymentMethod === 'promptpay' ? 'PromptPay' : orderReceipt.paymentMethod === 'card' ? 'Credit / debit card' : 'E-wallet'}</p>
+              <p className="text-[10px] text-[#8C7462]">Shipping to: {orderReceipt.shippingAddress}</p>
             </div>
 
             <button 
