@@ -330,9 +330,9 @@ export default function App() {
     setIsEditMode(false);
   };
 
-  const openCustomizer = (product) => {
+  const openCustomizer = (product, preferredColor = null) => {
     setCustomizeProduct(product);
-    const activeColor = cardSelectedColor[product.id] || product.colors[0];
+    const activeColor = preferredColor || cardSelectedColor[product.id] || product.colors[0];
     setCustomColor(activeColor);
     setSelectedCharms([]);
     setEmbroideryText('');
@@ -437,14 +437,65 @@ export default function App() {
     )));
   };
 
+  const getChatRecommendation = (message) => {
+    const normalizedMessage = message.toLowerCase();
+    const requestedTerms = normalizedMessage.split(/\s+/).filter(Boolean);
+    const requestedSize = /\b(mini|small|compact)\b/.test(normalizedMessage) ? 'mini' : null;
+    const requestedColor = ['blue', 'pink', 'rose', 'cream', 'white', 'sage', 'green', 'lilac', 'purple', 'yellow', 'peach', 'mint']
+      .find((color) => normalizedMessage.includes(color));
+    const requestedOccasion = /\b(holiday|vacation|travel|trip|weekend)\b/.test(normalizedMessage) ? 'weekend' : null;
+
+    const scoredProducts = catalog.map((product) => {
+      const productText = [product.name, product.category, product.tag, product.fabric, product.description]
+        .join(' ')
+        .toLowerCase();
+      const productColors = Array.isArray(product.colors) ? product.colors : [];
+      const matchingColor = requestedColor && productColors.find((color) => (
+        color.name.toLowerCase().includes(requestedColor) ||
+        (requestedColor === 'blue' && /sky|mist/.test(color.name.toLowerCase())) ||
+        (requestedColor === 'green' && /sage|mint/.test(color.name.toLowerCase())) ||
+        (requestedColor === 'purple' && /lilac|lavender/.test(color.name.toLowerCase()))
+      ));
+      const matchingTerms = requestedTerms.filter((term) => term.length > 2 && productText.includes(term));
+      let score = matchingTerms.length;
+      if (requestedSize === 'mini' && product.category?.toLowerCase() === 'mini') score += 8;
+      if (requestedOccasion === 'weekend' && product.category?.toLowerCase() === 'weekend') score += 3;
+      if (matchingColor) score += 6;
+      return { product, matchingColor, score };
+    }).sort((first, second) => second.score - first.score)[0];
+
+    if (!scoredProducts?.product || scoredProducts.score === 0) return null;
+
+    const { product, matchingColor } = scoredProducts;
+    const selectedColor = matchingColor || product.colors?.[0];
+    const colorMessage = requestedColor && !matchingColor
+      ? ` The closest available color is ${selectedColor?.name || 'the first available shade'}.`
+      : '';
+    const sizeMessage = requestedSize === 'mini' && product.category?.toLowerCase() !== 'mini'
+      ? ' I could not find a Mini tote with that color, so this is the closest color match.'
+      : '';
+
+    return {
+      productId: product.id,
+      colorId: selectedColor?.id,
+      text: `I recommend ${product.name}${selectedColor ? ` in ${selectedColor.name}` : ''}.${sizeMessage}${colorMessage}`
+    };
+  };
+
   const submitChatMessage = (event) => {
     event.preventDefault();
     const message = chatMessage.trim();
     if (!message) return;
+    const recommendation = getChatRecommendation(message);
     setChatMessages((previousMessages) => [
       ...previousMessages,
       { id: Date.now(), sender: 'shopper', text: message },
-      { id: Date.now() + 1, sender: 'mavi', text: 'Thanks for your message! We will help you choose the right MAVI tote shortly.' }
+      {
+        id: Date.now() + 1,
+        sender: 'mavi',
+        text: recommendation?.text || 'Tell me the size, color, or occasion you have in mind and I will find the closest MAVI tote.',
+        recommendation
+      }
     ]);
     setChatMessage('');
   };
@@ -1709,9 +1760,24 @@ export default function App() {
           <div className="max-h-72 space-y-3 overflow-y-auto p-4">
             {chatMessages.map((message) => (
               <div key={message.id} className={`flex ${message.sender === 'shopper' ? 'justify-end' : 'justify-start'}`}>
-                <p className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed ${message.sender === 'shopper' ? 'bg-[#5C4033] text-[#F9F6F0]' : 'bg-[#F3EEEA] text-[#5C4033]'}`}>
-                  {message.text}
-                </p>
+                <div className={`max-w-[85%] ${message.sender === 'shopper' ? 'items-end' : 'items-start'}`}>
+                  <p className={`rounded-2xl px-3 py-2 text-xs leading-relaxed ${message.sender === 'shopper' ? 'bg-[#5C4033] text-[#F9F6F0]' : 'bg-[#F3EEEA] text-[#5C4033]'}`}>
+                    {message.text}
+                  </p>
+                  {message.recommendation && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const recommendedProduct = catalog.find((product) => product.id === message.recommendation.productId);
+                        const recommendedColor = recommendedProduct?.colors?.find((color) => color.id === message.recommendation.colorId);
+                        if (recommendedProduct) openCustomizer(recommendedProduct, recommendedColor);
+                      }}
+                      className="mt-2 flex items-center gap-1 rounded-full border border-[#D8CEBE] bg-[#FDFBF7] px-3 py-1.5 text-[10px] font-bold text-[#5C4033] hover:bg-[#EFE8E2]"
+                    >
+                      <ShoppingBag className="h-3 w-3" /> View this tote
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
