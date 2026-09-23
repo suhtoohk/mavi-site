@@ -147,6 +147,42 @@ export default function App() {
   const [embroideryText, setEmbroideryText] = useState('');
   const [handleLength, setHandleLength] = useState('Standard (25cm)');
   const [orderReceipt, setOrderReceipt] = useState(null);
+  const [trackingInfo, setTrackingInfo] = useState(null);
+  const [customerReviews, setCustomerReviews] = useState([
+    {
+      id: 1,
+      productId: 1,
+      productName: 'Cloud Puff Tote',
+      reviewer: 'Nina',
+      rating: 5,
+      comment: 'The texture is lovely and super soft. It feels elevated but still easy for everyday use.',
+      date: '12 Jul 2026'
+    },
+    {
+      id: 2,
+      productId: 2,
+      productName: 'Velvet Bubble Tote',
+      reviewer: 'Maya',
+      rating: 5,
+      comment: 'The puff finish is even better in real life. It has such a nice soft structure and looks chic.',
+      date: '28 Jul 2026'
+    },
+    {
+      id: 3,
+      productId: 3,
+      productName: 'Mini Soft Carry Tote',
+      reviewer: 'Ploy',
+      rating: 4,
+      comment: 'Perfect mini size for quick errands and travel days. The color is a little more muted in person, but still beautiful.',
+      date: '04 Aug 2026'
+    }
+  ]);
+  const [reviewForm, setReviewForm] = useState({
+    productId: PRODUCT_CATALOG[0].id,
+    reviewer: '',
+    rating: 5,
+    comment: ''
+  });
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [checkoutData, setCheckoutData] = useState({
     name: '',
@@ -406,6 +442,23 @@ export default function App() {
   };
 
   const totalCartPrice = cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+  const reviewSummary = useMemo(() => {
+    const summary = {};
+
+    catalog.forEach((product) => {
+      const productReviews = customerReviews.filter((review) => review.productId === product.id);
+      const averageRating = productReviews.length
+        ? productReviews.reduce((total, review) => total + review.rating, 0) / productReviews.length
+        : product.rating || 0;
+
+      summary[product.id] = {
+        averageRating,
+        reviewCount: productReviews.length
+      };
+    });
+
+    return summary;
+  }, [catalog, customerReviews]);
 
   const shippingCost = checkoutData.shippingMethod === 'worldwide-express' ? 850 : checkoutData.country === 'Thailand' ? 0 : 450;
   const checkoutTotal = totalCartPrice + shippingCost;
@@ -467,9 +520,55 @@ export default function App() {
       items: receiptData.items
     });
     if (orderError) console.warn('Order database save skipped:', orderError.message);
+
+    const nextTrackingInfo = {
+      orderId: receiptData.orderId,
+      status: checkoutData.shippingMethod === 'worldwide-express' ? 'In transit' : 'Packed and ready for dispatch',
+      eta: checkoutData.shippingMethod === 'worldwide-express' ? '2-4 business days' : '5-8 business days',
+      courier: checkoutData.country === 'Thailand' ? 'Thai Post' : 'DHL Express',
+      progress: checkoutData.shippingMethod === 'worldwide-express' ? 72 : 58,
+      steps: [
+        { label: 'Order placed', done: true },
+        { label: 'Packed in studio', done: true },
+        { label: 'Shipped', done: true },
+        { label: 'Out for delivery', done: false },
+        { label: 'Delivered', done: false }
+      ]
+    };
+
+    setTrackingInfo(nextTrackingInfo);
     setOrderReceipt(receiptData);
     setCart([]);
     setIsCheckoutOpen(false);
+  };
+
+  const handleSubmitReview = (event) => {
+    event.preventDefault();
+
+    if (!reviewForm.reviewer.trim() || !reviewForm.comment.trim()) {
+      showToast('Please add your name and a short review');
+      return;
+    }
+
+    const product = catalog.find((item) => item.id === Number(reviewForm.productId));
+    const submittedReview = {
+      id: Date.now(),
+      productId: Number(reviewForm.productId),
+      productName: product?.name || 'MAVI tote',
+      reviewer: reviewForm.reviewer.trim(),
+      rating: Number(reviewForm.rating),
+      comment: reviewForm.comment.trim(),
+      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    };
+
+    setCustomerReviews((previousReviews) => [submittedReview, ...previousReviews]);
+    setReviewForm({
+      productId: Number(reviewForm.productId),
+      reviewer: '',
+      rating: 5,
+      comment: ''
+    });
+    showToast('Thanks for your MAVI review');
   };
 
   const openEditor = () => {
@@ -1368,6 +1467,12 @@ export default function App() {
                       {product.description}
                     </p>
 
+                    <div className="mb-3 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8C7462]">
+                      <Star className="w-3.5 h-3.5 fill-[#D6A967] text-[#D6A967]" />
+                      <span>{(reviewSummary[product.id]?.averageRating ?? product.rating).toFixed(1)}</span>
+                      <span>({reviewSummary[product.id]?.reviewCount ?? product.reviews} reviews)</span>
+                    </div>
+
                     <div className="mb-4">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#A08978] block mb-1.5">
                         Color Selection:
@@ -1864,6 +1969,169 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        <div className="rounded-3xl border border-[#E4DBD0] bg-[#F3EEEA] p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8C7462]">Order tracking</p>
+              <h3 className="mt-1 font-serif text-2xl text-[#4A3525]">Track your MAVI delivery</h3>
+            </div>
+            <span className="inline-flex w-fit items-center rounded-full bg-[#E9E1D9] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#5C4033]">
+              {trackingInfo ? trackingInfo.status : 'No active order'}
+            </span>
+          </div>
+
+          {trackingInfo ? (
+            <div className="mt-5 grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-2xl border border-[#D8CEBE] bg-[#FDFBF7] p-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#8C7462]">Tracking ID</p>
+                    <strong className="mt-1 block font-serif text-lg text-[#4A3525]">{trackingInfo.orderId}</strong>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#8C7462]">Courier</p>
+                    <strong className="mt-1 block text-sm font-bold text-[#4A3525]">{trackingInfo.courier}</strong>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#8C7462]">ETA</p>
+                    <strong className="mt-1 block text-sm font-bold text-[#4A3525]">{trackingInfo.eta}</strong>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <div className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#6E5343]">
+                    <span>Progress</span>
+                    <span>{trackingInfo.progress}%</span>
+                  </div>
+                  <div className="h-2.5 overflow-hidden rounded-full bg-[#E9E1D9]">
+                    <div className="h-full rounded-full bg-[#7D8F7A]" style={{ width: `${trackingInfo.progress}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-[#D8CEBE] bg-[#FDFBF7] p-4">
+                <div className="space-y-3">
+                  {trackingInfo.steps.map((step) => (
+                    <div key={step.label} className="flex items-center gap-3">
+                      <div className={`h-3 w-3 rounded-full ${step.done ? 'bg-[#7D8F7A]' : 'bg-[#E9E1D9]'}`} />
+                      <span className={`text-xs ${step.done ? 'font-bold text-[#4A3525]' : 'text-[#8C7462]'}`}>
+                        {step.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-5 text-sm text-[#6E5343]">
+              Place an order to see real-time delivery updates, shipping milestones, and tracking details here.
+            </p>
+          )}
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-3xl border border-[#E4DBD0] bg-[#F3EEEA] p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8C7462]">Verified reviews</p>
+                <h3 className="mt-1 font-serif text-2xl text-[#4A3525]">What customers are saying</h3>
+              </div>
+              <div className="flex items-center gap-1 rounded-full bg-[#FDFBF7] border border-[#D8CEBE] px-3 py-1.5 text-xs font-bold text-[#5C4033]">
+                <Star className="h-3.5 w-3.5 fill-[#D6A967] text-[#D6A967]" />
+                {(customerReviews.reduce((sum, review) => sum + review.rating, 0) / customerReviews.length).toFixed(1)}
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              {customerReviews.slice(0, 3).map((review) => (
+                <div key={review.id} className="rounded-2xl border border-[#D8CEBE] bg-[#FDFBF7] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-[#5C4033]">{review.productName}</p>
+                      <p className="text-[10px] text-[#8C7462]">{review.reviewer}</p>
+                    </div>
+                    <span className="text-[10px] text-[#8C7462]">{review.date}</span>
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={`h-3.5 w-3.5 ${star <= review.rating ? 'fill-[#D6A967] text-[#D6A967]' : 'text-[#D9D3C8]'}`}
+                      />
+                    ))}
+                  </div>
+
+                  <p className="mt-3 text-sm leading-relaxed text-[#4A3525]">{review.comment}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-[#E4DBD0] bg-[#FDFBF7] p-5 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8C7462]">Leave a review</p>
+            <h3 className="mt-1 font-serif text-2xl text-[#4A3525]">Share your thoughts</h3>
+
+            <form onSubmit={handleSubmitReview} className="mt-5 space-y-4">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343]">
+                Product
+                <select
+                  value={reviewForm.productId}
+                  onChange={(event) => setReviewForm((previous) => ({ ...previous, productId: Number(event.target.value) }))}
+                  className="mt-1 w-full rounded-xl border border-[#E7D8D0] bg-[#F9F6F0] p-2.5 text-sm text-[#4A3525] outline-none focus:border-[#5C4033]"
+                >
+                  {catalog.map((product) => (
+                    <option key={product.id} value={product.id}>{product.name}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343]">
+                Your name
+                <input
+                  type="text"
+                  value={reviewForm.reviewer}
+                  onChange={(event) => setReviewForm((previous) => ({ ...previous, reviewer: event.target.value }))}
+                  placeholder="Name"
+                  className="mt-1 w-full rounded-xl border border-[#E7D8D0] bg-[#F9F6F0] p-2.5 text-sm text-[#4A3525] outline-none focus:border-[#5C4033]"
+                />
+              </label>
+
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343]">
+                Rating
+                <select
+                  value={reviewForm.rating}
+                  onChange={(event) => setReviewForm((previous) => ({ ...previous, rating: Number(event.target.value) }))}
+                  className="mt-1 w-full rounded-xl border border-[#E7D8D0] bg-[#F9F6F0] p-2.5 text-sm text-[#4A3525] outline-none focus:border-[#5C4033]"
+                >
+                  {[5, 4, 3, 2, 1].map((rating) => (
+                    <option key={rating} value={rating}>{rating} star{rating > 1 ? 's' : ''}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E5343]">
+                Review
+                <textarea
+                  rows={4}
+                  value={reviewForm.comment}
+                  onChange={(event) => setReviewForm((previous) => ({ ...previous, comment: event.target.value }))}
+                  placeholder="Tell us about your experience..."
+                  className="mt-1 w-full rounded-xl border border-[#E7D8D0] bg-[#F9F6F0] p-2.5 text-sm text-[#4A3525] outline-none focus:border-[#5C4033]"
+                />
+              </label>
+
+              <button type="submit" className="w-full rounded-2xl bg-[#5C4033] px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#F9F6F0] shadow-sm hover:bg-[#4A3525]">
+                Submit review
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
 
       {isChatOpen && (
         <div className="fixed bottom-24 right-4 z-50 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-3xl border border-[#D8CEBE] bg-[#FDFBF7] shadow-2xl">
